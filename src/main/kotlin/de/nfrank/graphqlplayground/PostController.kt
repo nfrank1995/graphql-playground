@@ -1,7 +1,9 @@
 package de.nfrank.graphqlplayground
 
 import org.springframework.graphql.data.method.annotation.Argument
+import org.springframework.graphql.data.method.annotation.MutationMapping
 import org.springframework.graphql.data.method.annotation.QueryMapping
+import org.springframework.graphql.data.method.annotation.SchemaMapping
 import org.springframework.stereotype.Controller
 import org.springframework.stereotype.Service
 
@@ -15,8 +17,8 @@ data class Post(
 
 data class Author(
     val id: String,
-    val firstName: String,
-    val lastName: String
+    val name: String,
+    val posts: MutableList<String>
 )
 
 @Service
@@ -83,25 +85,33 @@ class AuthorDao {
     private val authorRepo = mutableListOf(
         Author(
             id = "a0",
-            firstName = "Ethan",
-            lastName = "Wiener"
+            name = "Ethan Wiener",
+            posts = mutableListOf(
+                "p0",
+                "p1",
+                "p4",
+            )
         ),
         Author(
             id = "a1",
-            firstName = "Anita",
-            lastName = "Bath"
+            name = "Anita Bath",
+            posts = mutableListOf(
+                "p2",
+                "p3",
+                "p5",
+            )
         )
     )
 
-    fun getRecentPosts(count: Int, offset: Int): List<Author> {
-        return authorRepo.subList(offset, offset + count)
+    fun getAuthor(id: String): Author? {
+        return authorRepo.find { it.id == id }
     }
 
-    fun createPost(firstname: String, lastName: String): Author {
+    fun createAuthor(firstname: String, name: String): Author {
         val author = Author(
             id = "a${authorRepo.size}",
-            firstName = firstname,
-            lastName = lastName
+            name = name,
+            posts = mutableListOf()
         )
 
         authorRepo.add(author)
@@ -114,9 +124,24 @@ class AuthorDao {
 @Controller
 class PostController(
     val postDao: PostDao,
+    val authorDao: AuthorDao,
 ) {
     @QueryMapping
-    fun recentPost(@Argument count: Int, @Argument offset: Int): List<Post> {
+    fun recentPosts(@Argument count: Int, @Argument offset: Int): List<Post> {
         return postDao.getRecentPosts(count, offset)
+    }
+
+    @SchemaMapping
+    fun author(post: Post) : Author {
+        return authorDao.getAuthor(post.authorId)!!
+    }
+
+    @MutationMapping
+    fun createPost(
+        @Argument title: String,
+        @Argument category: String,
+        @Argument authorId: String
+    ): Post {
+        return postDao.createPost(title,category,authorId)
     }
 }
